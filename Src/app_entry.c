@@ -33,6 +33,9 @@
 
 /* Private includes -----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#undef MIN
+#undef MAX
+#include "usbd_cdc_if.h"
 
 /* USER CODE END Includes */
 
@@ -108,6 +111,20 @@ void APPE_Init( void )
    return;
 }
 /* USER CODE BEGIN FD */
+
+void HAL_GPIO_EXTI_Callback( uint16_t GPIO_Pin )
+{
+  switch (GPIO_Pin)
+  {
+    case B1_Pin:
+     APP_BLE_Key_Button1_Action();
+      break;
+
+    default:
+      break;
+  }
+  return;
+}
 
 /* USER CODE END FD */
 
@@ -362,6 +379,29 @@ void shci_cmd_resp_wait(uint32_t timeout)
   * @retval None
   */
 #if(CFG_DEBUG_TRACE != 0)
+//void DbgOutputInit( void )
+//{
+//
+//  return;
+//}
+//
+///**
+//  * @brief  Management of the traces
+//  * @param  p_data : data
+//  * @param  size : size
+//  * @param  call-back :
+//  * @retval None
+//  */
+//void DbgOutputTraces(  uint8_t *p_data, uint16_t size, void (*cb)(void) )
+//{
+//  HW_UART_Transmit_DMA(DBG_TRACE_UART_CFG, p_data, size, cb);
+//
+//  return;
+//}
+#endif
+
+/* USER CODE BEGIN FD_WRAP_FUNCTIONS */
+
 void DbgOutputInit( void )
 {
 
@@ -377,13 +417,10 @@ void DbgOutputInit( void )
   */
 void DbgOutputTraces(  uint8_t *p_data, uint16_t size, void (*cb)(void) )
 {
-  HW_UART_Transmit_DMA(DBG_TRACE_UART_CFG, p_data, size, cb);
-
+//  HW_UART_Transmit_DMA(DBG_TRACE_UART_CFG, p_data, size, cb);
+	CDC_Transmit_FS(p_data, size);
   return;
 }
-#endif
-
-/* USER CODE BEGIN FD_WRAP_FUNCTIONS */
 
 /* USER CODE END FD_WRAP_FUNCTIONS */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

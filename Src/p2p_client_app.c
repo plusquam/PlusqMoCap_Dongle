@@ -211,6 +211,11 @@ void P2PC_APP_Notification(P2PC_APP_ConnHandle_Not_evt_t *pNotification)
 }
 /* USER CODE BEGIN FD */
 
+void P2PC_APP_SW1_Button_Action(void)
+{
+  SCH_SetTask(1<<CFG_TASK_SW1_BUTTON_PUSHED_ID, CFG_SCH_PRIO_0);
+}
+
 /* USER CODE END FD */
 
 /*************************************************************

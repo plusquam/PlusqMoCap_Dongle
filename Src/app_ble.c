@@ -37,6 +37,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "main.h"
 
 /* USER CODE END Includes */
 
@@ -392,7 +393,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
               && gap_evt_proc_complete->Status == 0x00)
           {
               /* USER CODE BEGIN GAP_GENERAL_DISCOVERY_PROC */
-
+        	  HAL_GPIO_WritePin(B1_GPIO_Port, B1_Pin, GPIO_PIN_RESET);
               /* USER CODE END GAP_GENERAL_DISCOVERY_PROC */
 #if(CFG_DEBUG_APP_TRACE != 0)
             APP_DBG_MSG("-- GAP GENERAL DISCOVERY PROCEDURE_COMPLETED\n");
@@ -643,6 +644,22 @@ APP_BLE_ConnStatus_t APP_BLE_Get_Client_Connection_Status( uint16_t Connection_H
 }
 /* USER CODE BEGIN FD */
 
+void APP_BLE_Key_Button1_Action(void)
+{
+#if OOB_DEMO == 0
+      P2PC_APP_SW1_Button_Action();
+#else
+      if(P2P_Client_APP_Get_State () != APP_BLE_CONNECTED_CLIENT)
+      {
+        SCH_SetTask(1 << CFG_TASK_START_SCAN_ID, CFG_SCH_PRIO_0);
+      }
+      else
+      {
+        P2PC_APP_SW1_Button_Action();
+      }
+#endif
+}
+
 /* USER CODE END FD */
 /*************************************************************
  *
@@ -795,7 +812,7 @@ static void Ble_Tl_Init( void )
 static void Scan_Request( void )
 {
   /* USER CODE BEGIN Scan_Request_1 */
-
+	HAL_GPIO_WritePin(B1_GPIO_Port, B1_Pin, GPIO_PIN_SET);
   /* USER CODE END Scan_Request_1 */
   tBleStatus result;
   if (BleApplicationContext.Device_Connection_Status != APP_BLE_CONNECTED_CLIENT)
