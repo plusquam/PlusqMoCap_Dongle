@@ -393,7 +393,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
               && gap_evt_proc_complete->Status == 0x00)
           {
               /* USER CODE BEGIN GAP_GENERAL_DISCOVERY_PROC */
-        	  HAL_GPIO_WritePin(B1_GPIO_Port, B1_Pin, GPIO_PIN_RESET);
+        	  HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
               /* USER CODE END GAP_GENERAL_DISCOVERY_PROC */
 #if(CFG_DEBUG_APP_TRACE != 0)
             APP_DBG_MSG("-- GAP GENERAL DISCOVERY PROCEDURE_COMPLETED\n");
@@ -660,6 +660,14 @@ void APP_BLE_Key_Button1_Action(void)
 #endif
 }
 
+void APP_BLE_Key_Button2_Action(void)
+{
+}
+
+void APP_BLE_Key_Button3_Action(void)
+{
+}
+
 /* USER CODE END FD */
 /*************************************************************
  *
@@ -812,13 +820,13 @@ static void Ble_Tl_Init( void )
 static void Scan_Request( void )
 {
   /* USER CODE BEGIN Scan_Request_1 */
-	HAL_GPIO_WritePin(B1_GPIO_Port, B1_Pin, GPIO_PIN_SET);
+	
   /* USER CODE END Scan_Request_1 */
   tBleStatus result;
   if (BleApplicationContext.Device_Connection_Status != APP_BLE_CONNECTED_CLIENT)
   {
     /* USER CODE BEGIN APP_BLE_CONNECTED_CLIENT */
-
+	HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
     /* USER CODE END APP_BLE_CONNECTED_CLIENT */
     result = aci_gap_start_general_discovery_proc(SCAN_P, SCAN_L, PUBLIC_ADDR, 1);
     if (result == BLE_STATUS_SUCCESS)
@@ -833,7 +841,7 @@ static void Scan_Request( void )
     else
     {
     /* USER CODE BEGIN BLE_SCAN_FAILED */
-
+	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
     /* USER CODE END BLE_SCAN_FAILED */
 #if(CFG_DEBUG_APP_TRACE != 0)
       APP_DBG_MSG("-- BLE_App_Start_Limited_Disc_Req, Failed \r\n\r");
@@ -880,7 +888,7 @@ static void Connect_Request( void )
     else
     {
     /* USER CODE BEGIN BLE_CONNECT_FAILED */
-
+	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
     /* USER CODE END BLE_CONNECT_FAILED */
       BleApplicationContext.Device_Connection_Status = APP_BLE_IDLE;
 
@@ -894,7 +902,7 @@ static void Connect_Request( void )
 
 static void Switch_OFF_GPIO(){
 /* USER CODE BEGIN Switch_OFF_GPIO */
-
+	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 /* USER CODE END Switch_OFF_GPIO */
 }
 

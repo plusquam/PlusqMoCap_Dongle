@@ -33,7 +33,7 @@
 
 /* Private includes -----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "vcp.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -415,6 +415,7 @@ void DbgOutputInit( void )
 void DbgOutputTraces(  uint8_t *p_data, uint16_t size, void (*cb)(void) )
 {
 //  HW_UART_Transmit_DMA(DBG_TRACE_UART_CFG, p_data, size, cb);
+	VCP_SendData(p_data, size, cb);
   return;
 }
 

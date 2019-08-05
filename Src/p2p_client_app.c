@@ -106,6 +106,28 @@ typedef struct
 }P2P_ClientContext_t;
 
 /* USER CODE BEGIN PTD */
+typedef struct{
+  uint8_t                                     Device_Led_Selection;
+  uint8_t                                     Led1;
+}P2P_LedCharValue_t;
+
+typedef struct{
+  uint8_t                                     Device_Button_Selection;
+  uint8_t                                     Button1;
+}P2P_ButtonCharValue_t;
+
+typedef struct
+{
+
+  uint8_t       Notification_Status; /* used to chek if P2P Server is enabled to Notify */
+
+  P2P_LedCharValue_t         LedControl;
+  P2P_ButtonCharValue_t      ButtonStatus;
+
+  uint16_t ConnectionHandle;
+
+
+} P2P_Client_App_Context_t;
 
 /* USER CODE END PTD */
 
@@ -133,14 +155,16 @@ PLACE_IN_SECTION("BLE_APP_CONTEXT") static P2P_ClientContext_t aP2PClientContext
  * END of Section BLE_APP_CONTEXT
  */
 /* USER CODE BEGIN PV */
-
+PLACE_IN_SECTION("BLE_APP_CONTEXT") static P2P_Client_App_Context_t P2P_Client_App_Context;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 static void Gatt_Notification(P2P_Client_App_Notification_evt_t *pNotification);
 static SVCCTL_EvtAckStatus_t Event_Handler(void *Event);
 /* USER CODE BEGIN PFP */
-
+static void Button_Trigger_Received(void);
+static void Update_Service();
+static tBleStatus Write_Char(uint16_t UUID, uint8_t Service_Instance, uint8_t *pPayload);
 /* USER CODE END PFP */
 
 /* Functions Definition ------------------------------------------------------*/
@@ -153,7 +177,19 @@ void P2PC_APP_Init(void)
 {
   uint8_t index =0;
 /* USER CODE BEGIN P2PC_APP_Init_1 */
+  SCH_RegTask( CFG_TASK_SEARCH_SERVICE_ID, Update_Service );
+  SCH_RegTask( CFG_TASK_SW1_BUTTON_PUSHED_ID, Button_Trigger_Received );
+  
+	/**
+	* Initialize LedButton Service
+	*/
+  P2P_Client_App_Context.Notification_Status=0;
+  P2P_Client_App_Context.ConnectionHandle =  0x00;
 
+  P2P_Client_App_Context.LedControl.Device_Led_Selection=0x00;/* device Led */
+  P2P_Client_App_Context.LedControl.Led1=0x00; /* led OFF */
+  P2P_Client_App_Context.ButtonStatus.Device_Button_Selection=0x01;/* Device1 */
+  P2P_Client_App_Context.ButtonStatus.Button1=0x00;
 /* USER CODE END P2PC_APP_Init_1 */
   for(index = 0; index < BLE_CFG_CLT_MAX_NBR_CB; index++)
   {
@@ -188,13 +224,26 @@ void P2PC_APP_Notification(P2PC_APP_ConnHandle_Not_evt_t *pNotification)
 
   case PEER_CONN_HANDLE_EVT :
 /* USER CODE BEGIN PEER_CONN_HANDLE_EVT */
-
+	P2P_Client_App_Context.ConnectionHandle = pNotification->ConnectionHandle;
 /* USER CODE END PEER_CONN_HANDLE_EVT */
       break;
 
     case PEER_DISCON_HANDLE_EVT :
 /* USER CODE BEGIN PEER_DISCON_HANDLE_EVT */
-
+      {
+      uint8_t index = 0;
+      P2P_Client_App_Context.ConnectionHandle =  0x00;
+      while((index < BLE_CFG_CLT_MAX_NBR_CB) &&
+                  (aP2PClientContext[index].state != APP_BLE_IDLE))
+      {
+        aP2PClientContext[index].state = APP_BLE_IDLE;
+      }
+      HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
+        
+#if OOB_DEMO == 0
+      SCH_SetTask(1<<CFG_TASK_CONN_DEV_1_ID, CFG_SCH_PRIO_0);
+#endif 
+      }
 /* USER CODE END PEER_DISCON_HANDLE_EVT */
       break;
 
@@ -529,7 +578,29 @@ void Gatt_Notification(P2P_Client_App_Notification_evt_t *pNotification)
 
     case P2P_NOTIFICATION_INFO_RECEIVED_EVT:
 /* USER CODE BEGIN P2P_NOTIFICATION_INFO_RECEIVED_EVT */
+    {
+    	P2P_Client_App_Context.LedControl.Device_Led_Selection=pNotification->DataTransfered.pPayload[0];
+		switch(P2P_Client_App_Context.LedControl.Device_Led_Selection) {
 
+		case 0x01 : {
+
+		  P2P_Client_App_Context.LedControl.Led1=pNotification->DataTransfered.pPayload[1];
+
+		  if(P2P_Client_App_Context.LedControl.Led1==0x00){
+			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
+			APP_DBG_MSG(" -- P2P APPLICATION CLIENT : NOTIFICATION RECEIVED - LED OFF \n\r");
+			APP_DBG_MSG(" \n\r");
+		  } else {
+			APP_DBG_MSG(" -- P2P APPLICATION CLIENT : NOTIFICATION RECEIVED - LED ON\n\r");
+			APP_DBG_MSG(" \n\r");
+			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
+		  }
+
+		  break;
+		}
+		default : break;
+		}
+    }
 /* USER CODE END P2P_NOTIFICATION_INFO_RECEIVED_EVT */
       break;
 
@@ -549,6 +620,125 @@ uint8_t P2P_Client_APP_Get_State( void ) {
   return aP2PClientContext[0].state;
 }
 /* USER CODE BEGIN LF */
+
+/**
+ * @brief  Feature Characteristic update
+ * @param  pFeatureValue: The address of the new value to be written
+ * @retval None
+ */
+static tBleStatus Write_Char(uint16_t UUID, uint8_t Service_Instance, uint8_t *pPayload)
+{
+
+  tBleStatus ret = BLE_STATUS_INVALID_PARAMS;
+  uint8_t index;
+
+  index = 0;
+  while((index < BLE_CFG_CLT_MAX_NBR_CB) &&
+          (aP2PClientContext[index].state != APP_BLE_IDLE))
+  {
+
+    switch(UUID)
+    {
+      case P2P_WRITE_CHAR_UUID: /* SERVER RX -- so CLIENT TX */
+        ret =aci_gatt_write_without_resp(aP2PClientContext[index].connHandle,
+                                         aP2PClientContext[index].P2PWriteToServerCharHdle,
+                                         2, /* charValueLen */
+                                         (uint8_t *)  pPayload);
+
+        break;
+
+      default:
+        break;
+    }
+    index++;
+  }
+
+  return ret;
+}/* end Write_Char() */
+
+static void Button_Trigger_Received(void)
+{
+  APP_DBG_MSG("-- P2P APPLICATION CLIENT  : BUTTON PUSHED - WRITE TO SERVER \n ");
+  APP_DBG_MSG(" \n\r");
+  if(P2P_Client_App_Context.ButtonStatus.Button1==0x00){
+    P2P_Client_App_Context.ButtonStatus.Button1=0x01;
+  }else {
+    P2P_Client_App_Context.ButtonStatus.Button1=0x00;
+  }
+
+  Write_Char( P2P_WRITE_CHAR_UUID, 0, (uint8_t *)&P2P_Client_App_Context.ButtonStatus);
+
+  return;
+}
+
+static void Update_Service()
+{
+  uint16_t enable = 0x0001;
+
+
+  uint8_t index;
+
+  index = 0;
+  while((index < BLE_CFG_CLT_MAX_NBR_CB) &&
+          (aP2PClientContext[index].state != APP_BLE_IDLE))
+  {
+
+
+    switch(aP2PClientContext[index].state)
+    {
+
+      case APP_BLE_DISCOVER_SERVICES:
+        APP_DBG_MSG("P2P_DISCOVER_SERVICES\n");
+        break;
+      case APP_BLE_DISCOVER_CHARACS:
+        APP_DBG_MSG("* GATT : Discover P2P Characteristics\n");
+        aci_gatt_disc_all_char_of_service(aP2PClientContext[index].connHandle,
+                                          aP2PClientContext[index].P2PServiceHandle,
+                                          aP2PClientContext[index].P2PServiceEndHandle);
+
+        break;
+      case APP_BLE_DISCOVER_WRITE_DESC: /* Not Used - No decriptor */
+        APP_DBG_MSG("* GATT : Discover Descriptor of TX - Write Characteritic\n");
+        aci_gatt_disc_all_char_desc(aP2PClientContext[index].connHandle,
+                                    aP2PClientContext[index].P2PWriteToServerCharHdle,
+                                    aP2PClientContext[index].P2PWriteToServerCharHdle+2);
+
+        break;
+      case APP_BLE_DISCOVER_NOTIFICATION_CHAR_DESC:
+        APP_DBG_MSG("* GATT : Discover Descriptor of Rx - Notification Characteritic\n");
+        aci_gatt_disc_all_char_desc(aP2PClientContext[index].connHandle,
+                                    aP2PClientContext[index].P2PNotificationCharHdle,
+                                    aP2PClientContext[index].P2PNotificationCharHdle+2);
+
+        break;
+      case APP_BLE_ENABLE_NOTIFICATION_DESC:
+        APP_DBG_MSG("* GATT : Enable Server Notification\n");
+        aci_gatt_write_char_desc(aP2PClientContext[index].connHandle,
+                                 aP2PClientContext[index].P2PNotificationDescHandle,
+                                 2,
+                                 (uint8_t *)&enable);
+
+        aP2PClientContext[index].state = APP_BLE_CONNECTED_CLIENT;
+        HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+
+        break;
+      case APP_BLE_DISABLE_NOTIFICATION_DESC :
+        APP_DBG_MSG("* GATT : Disable Server Notification\n");
+        aci_gatt_write_char_desc(aP2PClientContext[index].connHandle,
+                                 aP2PClientContext[index].P2PNotificationDescHandle,
+                                 2,
+                                 (uint8_t *)&enable);
+
+        aP2PClientContext[index].state = APP_BLE_CONNECTED_CLIENT;
+
+        break;
+      default:
+        break;
+    }
+    index++;
+  }
+  return;
+}
 
 /* USER CODE END LF */
 

@@ -59,10 +59,10 @@ static void MX_GPIO_Init(void);
 static void MX_RF_Init(void);
 static void MX_RTC_Init(void);
 /* USER CODE BEGIN PFP */
-void dummy_callback(void)
-{
-
-}
+//void dummy_callback(void)
+//{
+//
+//}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -107,15 +107,15 @@ int main(void)
   VCP_Init(usb_tx_buffer, usb_rx_buffer);
 
   /* USER CODE END 2 */
-  uint8_t test_text[] = "test!\n";
+//  uint8_t test_text[] = "test!\n";
   APPE_Init();
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  if(test_mut)
-		  VCP_SendData(test_text, sizeof(test_text)/sizeof(uint8_t), &dummy_callback);
+//	  if(test_mut)
+//		  VCP_SendData(test_text, sizeof(test_text)/sizeof(uint8_t), &dummy_callback);
 	  SCH_Run(~0);
     /* USER CODE END WHILE */
 
