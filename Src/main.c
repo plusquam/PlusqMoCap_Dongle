@@ -21,10 +21,11 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "app_entry.h"
-#include "usb_device.h"
+//#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "vcp.h"
 #include "scheduler.h"
 /* USER CODE END Includes */
 
@@ -48,7 +49,8 @@
 RTC_HandleTypeDef hrtc;
 
 /* USER CODE BEGIN PV */
-
+uint8_t usb_tx_buffer[2048], usb_rx_buffer[2048];
+volatile uint8_t test_mut = 1;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -57,7 +59,10 @@ static void MX_GPIO_Init(void);
 static void MX_RF_Init(void);
 static void MX_RTC_Init(void);
 /* USER CODE BEGIN PFP */
+void dummy_callback(void)
+{
 
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -96,16 +101,21 @@ int main(void)
   MX_GPIO_Init();
   MX_RF_Init();
   MX_RTC_Init();
-  MX_USB_Device_Init();
+//  MX_USB_Device_Init();
   /* USER CODE BEGIN 2 */
 
+  VCP_Init(usb_tx_buffer, usb_rx_buffer);
+
   /* USER CODE END 2 */
+  uint8_t test_text[] = "test!\n";
   APPE_Init();
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  if(test_mut)
+		  VCP_SendData(test_text, sizeof(test_text)/sizeof(uint8_t), &dummy_callback);
 	  SCH_Run(~0);
     /* USER CODE END WHILE */
 

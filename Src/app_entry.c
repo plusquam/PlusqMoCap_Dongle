@@ -33,9 +33,6 @@
 
 /* Private includes -----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#undef MIN
-#undef MAX
-#include "usbd_cdc_if.h"
 
 /* USER CODE END Includes */
 
@@ -418,7 +415,6 @@ void DbgOutputInit( void )
 void DbgOutputTraces(  uint8_t *p_data, uint16_t size, void (*cb)(void) )
 {
 //  HW_UART_Transmit_DMA(DBG_TRACE_UART_CFG, p_data, size, cb);
-	CDC_Transmit_FS(p_data, size);
   return;
 }
 
