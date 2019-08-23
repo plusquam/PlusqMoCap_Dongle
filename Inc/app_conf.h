@@ -87,28 +87,11 @@
 #define CONN_P(x) ((int)((x)/1.25f))
 #define SCAN_P (0x320)
 #define SCAN_L (0x320)
-#define CONN_P1   (CONN_P(50))
-#define CONN_P2   (CONN_P(100))
+#define CONN_P1   (CONN_P(7.5f))
+#define CONN_P2   (CONN_P(20.f))
 #define SUPERV_TIMEOUT (0x1F4)
-#define CONN_L1   (CONN_L(10))
+#define CONN_L1   (CONN_L(5))
 #define CONN_L2   (CONN_L(10))
-#define OOB_DEMO                                1   /* Out Of Box Demo */  
-
-#define CFG_MAX_CONNECTION                      1
-#define UUID_128BIT_FORMAT                      1
-
-#define CFG_DEV_ID_P2P_SERVER1                  (0x83)
-
-#define CONN_L(x) ((int)((x)/0.625f))
-#define CONN_P(x) ((int)((x)/1.25f))
-#define SCAN_P (0x320)
-#define SCAN_L (0x320)
-#define CONN_P1   (CONN_P(50))
-#define CONN_P2   (CONN_P(100))
-#define SUPERV_TIMEOUT (0x1F4)
-#define CONN_L1   (CONN_L(10))
-#define CONN_L2   (CONN_L(10))
-
 #define OOB_DEMO                                1   /* Out Of Box Demo */  
 
 /******************************************************************************
@@ -133,7 +116,7 @@
  * Note that certain characteristics and relative descriptors are added automatically during device initialization
  * so this parameters should be 9 plus the number of user Attributes
  */
-#define CFG_BLE_NUM_GATT_ATTRIBUTES 68
+#define CFG_BLE_NUM_GATT_ATTRIBUTES 150
 
 /**
  * Maximum supported ATT_MTU size
@@ -155,7 +138,7 @@
 /**
  * Prepare Write List size in terms of number of packet with ATT_MTU=23 bytes
  */
-#define CFG_BLE_PREPARE_WRITE_LIST_SIZE         ( 0x3A )
+#define CFG_BLE_PREPARE_WRITE_LIST_SIZE         (79)//( 0x3A )
 
 /**
  * Number of allocated memory blocks
@@ -231,7 +214,7 @@
  * for a CC/CS event, In that case, the notification TL_BLE_HCI_ToNot() is called to indicate
  * to the application a HCI command did not receive its command event within 30s (Default HCI Timeout).
  */
-#define CFG_TLBLE_EVT_QUEUE_LENGTH 5
+#define CFG_TLBLE_EVT_QUEUE_LENGTH 10
 /**
  * This parameter should be set to fit most events received by the HCI layer. It defines the buffer size of each element
  * allocated in the queue of received events and can be used to optimize the amount of RAM allocated by the Memory Manager.
@@ -434,6 +417,7 @@ typedef enum
     CFG_TASK_SYSTEM_HCI_ASYNCH_EVT_ID,
 /* USER CODE BEGIN CFG_Task_Id_With_NO_HCI_Cmd_t */
 	CFG_TASK_VCP_SEND_DATA_ID,
+	CFG_TASK_VCP_SEND_MEASUREMENT_DATA_ID,
 /* USER CODE END CFG_Task_Id_With_NO_HCI_Cmd_t */
     CFG_LAST_TASK_ID_WITHO_NO_HCICMD                                            /**< Shall be LAST in the list */
 } CFG_Task_Id_With_NO_HCI_Cmd_t;

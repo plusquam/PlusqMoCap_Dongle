@@ -156,6 +156,10 @@ PLACE_IN_SECTION("BLE_APP_CONTEXT") static P2P_ClientContext_t aP2PClientContext
  */
 /* USER CODE BEGIN PV */
 PLACE_IN_SECTION("BLE_APP_CONTEXT") static P2P_Client_App_Context_t P2P_Client_App_Context;
+struct {
+  uint8_t data[77];
+  uint8_t length;
+} P2P_measurementData;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -165,6 +169,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event);
 static void Button_Trigger_Received(void);
 static void Update_Service();
 static tBleStatus Write_Char(uint16_t UUID, uint8_t Service_Instance, uint8_t *pPayload);
+void P2PC_APP_Notification_Data_Send(void);
 /* USER CODE END PFP */
 
 /* Functions Definition ------------------------------------------------------*/
@@ -179,6 +184,7 @@ void P2PC_APP_Init(void)
 /* USER CODE BEGIN P2PC_APP_Init_1 */
   SCH_RegTask( CFG_TASK_SEARCH_SERVICE_ID, Update_Service );
   SCH_RegTask( CFG_TASK_SW1_BUTTON_PUSHED_ID, Button_Trigger_Received );
+  SCH_RegTask( CFG_TASK_VCP_SEND_MEASUREMENT_DATA_ID, P2PC_APP_Notification_Data_Send);
   
 	/**
 	* Initialize LedButton Service
@@ -225,6 +231,7 @@ void P2PC_APP_Notification(P2PC_APP_ConnHandle_Not_evt_t *pNotification)
   case PEER_CONN_HANDLE_EVT :
 /* USER CODE BEGIN PEER_CONN_HANDLE_EVT */
 	P2P_Client_App_Context.ConnectionHandle = pNotification->ConnectionHandle;
+    HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
 /* USER CODE END PEER_CONN_HANDLE_EVT */
       break;
 
@@ -239,6 +246,7 @@ void P2PC_APP_Notification(P2PC_APP_ConnHandle_Not_evt_t *pNotification)
         aP2PClientContext[index].state = APP_BLE_IDLE;
       }
       HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
+      HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
         
 #if OOB_DEMO == 0
       SCH_SetTask(1<<CFG_TASK_CONN_DEV_1_ID, CFG_SCH_PRIO_0);
@@ -263,6 +271,13 @@ void P2PC_APP_Notification(P2PC_APP_ConnHandle_Not_evt_t *pNotification)
 void P2PC_APP_SW1_Button_Action(void)
 {
   SCH_SetTask(1<<CFG_TASK_SW1_BUTTON_PUSHED_ID, CFG_SCH_PRIO_0);
+}
+
+void P2PC_APP_Notification_Data_Send(void)
+{
+  P2P_measurementData.data[P2P_measurementData.length] = '\n';
+  P2P_measurementData.data[P2P_measurementData.length + 1] = 0;
+	printf((const char * restrict)P2P_measurementData.data);
 }
 
 /* USER CODE END FD */
@@ -511,8 +526,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
           if(index < BLE_CFG_CLT_MAX_NBR_CB)
           {
 
-            if ( (pr->Attribute_Handle == aP2PClientContext[index].P2PNotificationCharHdle) &&
-                    (pr->Attribute_Value_Length == (2)) )
+            if ( (pr->Attribute_Handle == aP2PClientContext[index].P2PNotificationCharHdle) )
             {
 
               Notification.P2P_Client_Evt_Opcode = P2P_NOTIFICATION_INFO_RECEIVED_EVT;
@@ -579,27 +593,31 @@ void Gatt_Notification(P2P_Client_App_Notification_evt_t *pNotification)
     case P2P_NOTIFICATION_INFO_RECEIVED_EVT:
 /* USER CODE BEGIN P2P_NOTIFICATION_INFO_RECEIVED_EVT */
     {
-    	P2P_Client_App_Context.LedControl.Device_Led_Selection=pNotification->DataTransfered.pPayload[0];
-		switch(P2P_Client_App_Context.LedControl.Device_Led_Selection) {
-
-		case 0x01 : {
-
-		  P2P_Client_App_Context.LedControl.Led1=pNotification->DataTransfered.pPayload[1];
-
-		  if(P2P_Client_App_Context.LedControl.Led1==0x00){
-			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
-			APP_DBG_MSG(" -- P2P APPLICATION CLIENT : NOTIFICATION RECEIVED - LED OFF \n\r");
-			APP_DBG_MSG(" \n\r");
-		  } else {
-			APP_DBG_MSG(" -- P2P APPLICATION CLIENT : NOTIFICATION RECEIVED - LED ON\n\r");
-			APP_DBG_MSG(" \n\r");
-			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
-		  }
-
-		  break;
-		}
-		default : break;
-		}
+//    	P2P_Client_App_Context.LedControl.Device_Led_Selection=pNotification->DataTransfered.pPayload[0];
+//		switch(P2P_Client_App_Context.LedControl.Device_Led_Selection) {
+//
+//		case 0x01 : {
+//
+//		  P2P_Client_App_Context.LedControl.Led1=pNotification->DataTransfered.pPayload[1];
+//
+//		  if(P2P_Client_App_Context.LedControl.Led1==0x00){
+//			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
+//			APP_DBG_MSG(" -- P2P APPLICATION CLIENT : NOTIFICATION RECEIVED - LED OFF \n\r");
+//			APP_DBG_MSG(" \n\r");
+//		  } else {
+//			APP_DBG_MSG(" -- P2P APPLICATION CLIENT : NOTIFICATION RECEIVED - LED ON\n\r");
+//			APP_DBG_MSG(" \n\r");
+//			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
+//		  }
+//
+//		  break;
+//		}
+//		default : break;
+//		}
+    	memcpy(P2P_measurementData.data, pNotification->DataTransfered.pPayload, pNotification->DataTransfered.Length);
+    	P2P_measurementData.length = pNotification->DataTransfered.Length;
+    	SCH_SetTask(1<<CFG_TASK_VCP_SEND_MEASUREMENT_DATA_ID, CFG_SCH_PRIO_0);
+    	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
     }
 /* USER CODE END P2P_NOTIFICATION_INFO_RECEIVED_EVT */
       break;
