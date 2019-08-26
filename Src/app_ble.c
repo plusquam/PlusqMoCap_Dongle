@@ -244,7 +244,9 @@ static void Ble_Hci_Gap_Gatt_Init(void);
 static const uint8_t* BleGetBdAddress( void );
 static void Scan_Request( void );
 static void Connect_Request( void );
+#if (OOB_DEMO != 0)
 static void Switch_OFF_GPIO( void );
+#endif
  
 /* USER CODE BEGIN PFP */
 
@@ -492,6 +494,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
       /* USER CODE END subevent */
           case EVT_LE_CONN_COMPLETE:
           /* USER CODE BEGIN EVT_LE_CONN_COMPLETE */
+              SCH_SetTask( 1<<CFG_TASK_ATT_MTU_EXCHANGE_ID, CFG_SCH_PRIO_0);
 
           /* USER CODE END EVT_LE_CONN_COMPLETE */
           /**
@@ -613,6 +616,24 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
         }
 
           break;
+
+        case EVT_LE_PHY_UPDATE_COMPLETE:
+        {
+        	hci_le_phy_update_complete_event_rp0 *le_phy_update_data = (hci_le_phy_update_complete_event_rp0 *) meta_evt->data;
+        	if(le_phy_update_data->Status) 	{
+        		APP_DBG_MSG("-- HCI_LE_PHY_UPDATE_COMPLETE_EVENT -- error \n");
+        	}
+
+        	if(le_phy_update_data->Connection_Handle == BleApplicationContext.BleApplicationContext_legacy.connectionHandle) {
+        		if(le_phy_update_data->RX_PHY == RX_2M && le_phy_update_data->TX_PHY == TX_2M) 	{
+					APP_DBG_MSG("-- HCI_LE_PHY_UPDATE_COMPLETE_EVENT -- success, TX = 2M, RX = 2M! \n");
+				}
+        		else {
+        			APP_DBG_MSG("-- HCI_LE_PHY_UPDATE_COMPLETE_EVENT -- ;_; \n");
+        		}
+        	}
+        }
+        break; /* HCI_LE_PHY_UPDATE_COMPLETE_EVENT */
 
         default:
           /* USER CODE BEGIN subevent_default */
@@ -774,6 +795,10 @@ static void Ble_Tl_Init( void )
     {
       BLE_DBG_SVCCTL_MSG("Appearance aci_gatt_update_char_value failed.\n");
     }
+    /**
+       * Initialize Default PHY
+       */
+      hci_le_set_default_phy(ALL_PHYS_PREFERENCE,TX_2M_PREFERRED,RX_2M_PREFERRED);
 
     /**
      * Initialize IO capability
@@ -900,11 +925,13 @@ static void Connect_Request( void )
   return;
 }
 
+#if (OOB_DEMO != 0)
 static void Switch_OFF_GPIO(){
 /* USER CODE BEGIN Switch_OFF_GPIO */
-	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+//	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 /* USER CODE END Switch_OFF_GPIO */
 }
+#endif
 
 const uint8_t* BleGetBdAddress( void )
 {

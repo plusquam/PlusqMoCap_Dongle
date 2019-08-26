@@ -126,6 +126,7 @@ typedef struct
 
   uint16_t ConnectionHandle;
 
+  uint16_t Negotiated_ATT_MTU;
 
 } P2P_Client_App_Context_t;
 
@@ -170,6 +171,7 @@ static void Button_Trigger_Received(void);
 static void Update_Service();
 static tBleStatus Write_Char(uint16_t UUID, uint8_t Service_Instance, uint8_t *pPayload);
 void P2PC_APP_Notification_Data_Send(void);
+static void P2PS_Show_Config(void);
 /* USER CODE END PFP */
 
 /* Functions Definition ------------------------------------------------------*/
@@ -185,6 +187,9 @@ void P2PC_APP_Init(void)
   SCH_RegTask( CFG_TASK_SEARCH_SERVICE_ID, Update_Service );
   SCH_RegTask( CFG_TASK_SW1_BUTTON_PUSHED_ID, Button_Trigger_Received );
   SCH_RegTask( CFG_TASK_VCP_SEND_MEASUREMENT_DATA_ID, P2PC_APP_Notification_Data_Send);
+  SCH_RegTask( CFG_TASK_ATT_MTU_EXCHANGE_ID, P2PC_APP_Call_ATT_MTU_Exchange_Command);
+  SCH_RegTask( CFG_TASK_READ_CFG_ID, P2PS_Show_Config );
+
   
 	/**
 	* Initialize LedButton Service
@@ -196,6 +201,7 @@ void P2PC_APP_Init(void)
   P2P_Client_App_Context.LedControl.Led1=0x00; /* led OFF */
   P2P_Client_App_Context.ButtonStatus.Device_Button_Selection=0x01;/* Device1 */
   P2P_Client_App_Context.ButtonStatus.Button1=0x00;
+  P2P_Client_App_Context.Negotiated_ATT_MTU = 0u;
 /* USER CODE END P2PC_APP_Init_1 */
   for(index = 0; index < BLE_CFG_CLT_MAX_NBR_CB; index++)
   {
@@ -231,7 +237,8 @@ void P2PC_APP_Notification(P2PC_APP_ConnHandle_Not_evt_t *pNotification)
   case PEER_CONN_HANDLE_EVT :
 /* USER CODE BEGIN PEER_CONN_HANDLE_EVT */
 	P2P_Client_App_Context.ConnectionHandle = pNotification->ConnectionHandle;
-    HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
 /* USER CODE END PEER_CONN_HANDLE_EVT */
       break;
 
@@ -246,6 +253,7 @@ void P2PC_APP_Notification(P2PC_APP_ConnHandle_Not_evt_t *pNotification)
         aP2PClientContext[index].state = APP_BLE_IDLE;
       }
       HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
+      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
       HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
         
 #if OOB_DEMO == 0
@@ -559,12 +567,27 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
 
           if(index < BLE_CFG_CLT_MAX_NBR_CB)
           {
-
             SCH_SetTask( 1<<CFG_TASK_SEARCH_SERVICE_ID, CFG_SCH_PRIO_0);
-
           }
         }
         break; /*EVT_BLUE_GATT_PROCEDURE_COMPLETE*/
+
+        case EVT_BLUE_ATT_EXCHANGE_MTU_RESP:
+        {
+			aci_att_exchange_mtu_resp_event_rp0 *pr = (void*)blue_evt->data;
+			P2P_Client_App_Context.Negotiated_ATT_MTU = pr->Server_RX_MTU;
+#if(CFG_DEBUG_APP_TRACE != 0)
+			APP_DBG_MSG("-- GATT : EVT_BLUE_ATT_EXCHANGE_MTU_RESP, ATT_MTU: %d\n", P2P_Client_App_Context.Negotiated_ATT_MTU);
+			APP_DBG_MSG("\n");
+#endif
+			tBleStatus result = hci_le_set_data_length(P2P_Client_App_Context.ConnectionHandle, P2P_Client_App_Context.Negotiated_ATT_MTU, 2120);
+			#if(CFG_DEBUG_APP_TRACE != 0)
+			  if(result)
+				APP_DBG_MSG("-- hci_le_set_data_length error\n");
+			#endif
+        }
+        break; /*end EVT_BLUE_ATT_EXCHANGE_MTU_RESP*/
+
         default:
           break;
       }
@@ -617,7 +640,7 @@ void Gatt_Notification(P2P_Client_App_Notification_evt_t *pNotification)
     	memcpy(P2P_measurementData.data, pNotification->DataTransfered.pPayload, pNotification->DataTransfered.Length);
     	P2P_measurementData.length = pNotification->DataTransfered.Length;
     	SCH_SetTask(1<<CFG_TASK_VCP_SEND_MEASUREMENT_DATA_ID, CFG_SCH_PRIO_0);
-    	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+    	HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
     }
 /* USER CODE END P2P_NOTIFICATION_INFO_RECEIVED_EVT */
       break;
@@ -756,6 +779,63 @@ static void Update_Service()
     index++;
   }
   return;
+}
+
+void P2PC_APP_Call_ATT_MTU_Exchange_Command()
+{
+//	SCH_PauseTask(CFG_TASK_ATT_MTU_EXCHANGE_ID);
+//	HAL_Delay(100);
+
+	if(!P2P_Client_App_Context.Negotiated_ATT_MTU)
+	{
+		HAL_Delay(100);
+
+		tBleStatus result = aci_gatt_exchange_config(P2P_Client_App_Context.ConnectionHandle);
+		#if(CFG_DEBUG_APP_TRACE != 0)
+		if(!result)
+			APP_DBG_MSG("-- GATT : aci_gatt_exchange_config sent\n");
+		else
+			APP_DBG_MSG("-- GATT : aci_gatt_exchange_config error %d\n", result);
+		#endif
+	}
+
+	HAL_Delay(100);
+
+	tBleStatus result = hci_le_set_phy(P2P_Client_App_Context.ConnectionHandle, ALL_PHYS_PREFERENCE, TX_2M_PREFERRED, RX_2M_PREFERRED, 0);
+	#if(CFG_DEBUG_APP_TRACE != 0)
+	  if(result)
+		APP_DBG_MSG("-- hci_le_set_phy error\n");
+	#endif
+
+//	SCH_ResumeTask(CFG_TASK_ATT_MTU_EXCHANGE_ID);
+}
+
+static void P2PS_Show_Config(void)
+{
+#if(CFG_DEBUG_APP_TRACE != 0)
+	uint16_t supportedMaxTxOctets;
+	uint16_t supportedMaxTxTime;
+	uint16_t supportedMaxRxOctets;
+	uint16_t supportedMaxRxTime;
+	tBleStatus result = hci_le_read_maximum_data_length(&supportedMaxTxOctets,
+														&supportedMaxTxTime,
+														&supportedMaxRxOctets,
+														&supportedMaxRxTime);
+	if(!result)
+	  APP_DBG_MSG("-- CONFIG: %d, %d, %d, %d\n", supportedMaxTxOctets,
+				  supportedMaxTxTime, supportedMaxRxOctets, supportedMaxRxTime);
+	else
+		APP_DBG_MSG("-- hci_le_read_maximum_data_length error\n");
+
+	uint8_t TX_PHY;
+	uint8_t RX_PHY;
+	result = hci_le_read_phy(P2P_Client_App_Context.ConnectionHandle, &TX_PHY, &RX_PHY);
+	if(!result)
+	  APP_DBG_MSG("-- PHY: %d, %d\n", TX_PHY, RX_PHY);
+	else
+		APP_DBG_MSG("-- hci_le_read_phy error\n");
+
+	#endif
 }
 
 /* USER CODE END LF */
