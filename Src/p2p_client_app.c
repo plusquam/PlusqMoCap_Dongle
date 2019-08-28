@@ -172,6 +172,7 @@ static void Update_Service();
 static tBleStatus Write_Char(uint16_t UUID, uint8_t Service_Instance, uint8_t *pPayload);
 void P2PC_APP_Notification_Data_Send(void);
 static void P2PS_Show_Config(void);
+static void P2PC_APP_Call_ATT_MTU_Exchange_Command(void);
 /* USER CODE END PFP */
 
 /* Functions Definition ------------------------------------------------------*/
@@ -188,6 +189,7 @@ void P2PC_APP_Init(void)
   SCH_RegTask( CFG_TASK_SW1_BUTTON_PUSHED_ID, Button_Trigger_Received );
   SCH_RegTask( CFG_TASK_VCP_SEND_MEASUREMENT_DATA_ID, P2PC_APP_Notification_Data_Send);
   SCH_RegTask( CFG_TASK_ATT_MTU_EXCHANGE_ID, P2PC_APP_Call_ATT_MTU_Exchange_Command);
+  SCH_RegTask( CFG_TASK_SET_PHY_ID, P2PC_APP_Set_PHY);
   SCH_RegTask( CFG_TASK_READ_CFG_ID, P2PS_Show_Config );
 
   
@@ -568,6 +570,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
           if(index < BLE_CFG_CLT_MAX_NBR_CB)
           {
             SCH_SetTask( 1<<CFG_TASK_SEARCH_SERVICE_ID, CFG_SCH_PRIO_0);
+            SCH_SetTask( 1<<CFG_TASK_ATT_MTU_EXCHANGE_ID, CFG_SCH_PRIO_0);
           }
         }
         break; /*EVT_BLUE_GATT_PROCEDURE_COMPLETE*/
@@ -798,15 +801,6 @@ void P2PC_APP_Call_ATT_MTU_Exchange_Command()
 			APP_DBG_MSG("-- GATT : aci_gatt_exchange_config error %d\n", result);
 		#endif
 	}
-
-	HAL_Delay(100);
-
-	tBleStatus result = hci_le_set_phy(P2P_Client_App_Context.ConnectionHandle, ALL_PHYS_PREFERENCE, TX_2M_PREFERRED, RX_2M_PREFERRED, 0);
-	#if(CFG_DEBUG_APP_TRACE != 0)
-	  if(result)
-		APP_DBG_MSG("-- hci_le_set_phy error\n");
-	#endif
-
 //	SCH_ResumeTask(CFG_TASK_ATT_MTU_EXCHANGE_ID);
 }
 
@@ -835,6 +829,24 @@ static void P2PS_Show_Config(void)
 	else
 		APP_DBG_MSG("-- hci_le_read_phy error\n");
 
+	uint16_t	HC_LE_ACL_Data_Packet_Length;
+	uint8_t 	HC_Total_Num_LE_ACL_Data_Packets;
+	result = hci_le_read_buffer_size(&HC_LE_ACL_Data_Packet_Length, &HC_Total_Num_LE_ACL_Data_Packets);
+	if(!result)
+	  APP_DBG_MSG("-- Packet length: %d, Packets nr %d\n", HC_LE_ACL_Data_Packet_Length, HC_Total_Num_LE_ACL_Data_Packets);
+	else
+		APP_DBG_MSG("-- hci_le_read_buffer_size error\n");
+	#endif
+}
+
+void P2PC_APP_Set_PHY(void)
+{
+	HAL_Delay(100);
+
+	tBleStatus result = hci_le_set_phy(P2P_Client_App_Context.ConnectionHandle, ALL_PHYS_PREFERENCE, TX_2M_PREFERRED, RX_2M_PREFERRED, 0);
+	#if(CFG_DEBUG_APP_TRACE != 0)
+	  if(result)
+		APP_DBG_MSG("-- hci_le_set_phy error\n");
 	#endif
 }
 

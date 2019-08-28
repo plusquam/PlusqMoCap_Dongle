@@ -494,7 +494,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
       /* USER CODE END subevent */
           case EVT_LE_CONN_COMPLETE:
           /* USER CODE BEGIN EVT_LE_CONN_COMPLETE */
-              SCH_SetTask( 1<<CFG_TASK_ATT_MTU_EXCHANGE_ID, CFG_SCH_PRIO_0);
+              SCH_SetTask( 1<<CFG_TASK_SET_PHY_ID, CFG_SCH_PRIO_0);
 
           /* USER CODE END EVT_LE_CONN_COMPLETE */
           /**
