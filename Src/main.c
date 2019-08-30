@@ -50,8 +50,7 @@
 RTC_HandleTypeDef hrtc;
 
 /* USER CODE BEGIN PV */
-uint8_t usb_tx_buffer[2048], usb_rx_buffer[2048];
-volatile uint8_t test_mut = 1;
+uint8_t	usb_tx_buffer[2048], usb_rx_buffer[2048];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/

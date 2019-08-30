@@ -94,16 +94,16 @@
 #define CFG_MAX_CONNECTION                      1
 #define UUID_128BIT_FORMAT                      1
 #define CFG_DEV_ID_P2P_SERVER1                  (0x83)
-#define CONN_L(x) ((int)((x)/0.625f))
-#define CONN_P(x) ((int)((x)/1.25f))
-#define SCAN_P (0x320)
-#define SCAN_L (0x320)
-#define CONN_P1   (CONN_P(40.f))
-#define CONN_P2   (CONN_P(60.f))
-#define SUPERV_TIMEOUT (0x1F4)
-#define CONN_L1   (CONN_L(50.f))
-#define CONN_L2   (CONN_L(50.f))
-#define OOB_DEMO                                1   /* Out Of Box Demo */
+#define CONN_L(x) 		((int)((x)/0.625f))
+#define CONN_P(x) 		((int)((x)/1.25f))
+#define SCAN_P 			(0x320)
+#define SCAN_L 			(0x320)
+#define CONN_P1   		(CONN_P(7.5f))	// Conn_Interval_Min
+#define CONN_P2   		(CONN_P(10.f))	// Conn_Interval_Max
+#define SUPERV_TIMEOUT 	(0x1F4)
+#define CONN_L1   		(CONN_L(5.f))	// Minimum_CE_Length
+#define CONN_L2   		(CONN_L(7.f))	// Maximum_CE_Length
+#define OOB_DEMO  1   /* Out Of Box Demo */
 
 /******************************************************************************
  * BLE Stack
@@ -132,7 +132,7 @@
 /**
  * Maximum supported ATT_MTU size
  */
-#define CFG_BLE_MAX_ATT_MTU             (250)
+#define CFG_BLE_MAX_ATT_MTU             (100)
 
 /**
  * Size of the storage area for Attribute values
@@ -462,7 +462,7 @@ typedef enum
     CFG_TASK_START_SCAN_ID,
     CFG_TASK_CONN_DEV_1_ID,
     CFG_TASK_SEARCH_SERVICE_ID,
-    CFG_TASK_SW1_BUTTON_PUSHED_ID,
+    CFG_TASK_SEND_COMMAND_ID,
     CFG_TASK_CONN_UPDATE_ID,
     CFG_TASK_HCI_ASYNCH_EVT_ID,
 /* USER CODE BEGIN CFG_Task_Id_With_HCI_Cmd_t */

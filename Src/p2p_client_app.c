@@ -107,26 +107,22 @@ typedef struct
 
 /* USER CODE BEGIN PTD */
 typedef struct{
-  uint8_t                                     Device_Led_Selection;
-  uint8_t                                     Led1;
+  uint8_t	Device_Led_Selection;
+  uint8_t	Led1;
 }P2P_LedCharValue_t;
 
 typedef struct{
-  uint8_t                                     Device_Button_Selection;
-  uint8_t                                     Button1;
-}P2P_ButtonCharValue_t;
+  uint8_t	Payload[2];
+  uint8_t	Length;
+}P2P_ServerCommand_t;
 
 typedef struct
 {
-
-  uint8_t       Notification_Status; /* used to chek if P2P Server is enabled to Notify */
-
-  P2P_LedCharValue_t         LedControl;
-  P2P_ButtonCharValue_t      ButtonStatus;
-
-  uint16_t ConnectionHandle;
-
-  uint16_t Negotiated_ATT_MTU;
+  uint8_t				Notification_Status; /* used to chek if P2P Server is enabled to Notify */
+  P2P_LedCharValue_t	LedControl;
+  P2P_ServerCommand_t	CommandToSend;
+  uint16_t 				ConnectionHandle;
+  uint16_t				Negotiated_ATT_MTU;
 
 } P2P_Client_App_Context_t;
 
@@ -167,9 +163,9 @@ struct {
 static void Gatt_Notification(P2P_Client_App_Notification_evt_t *pNotification);
 static SVCCTL_EvtAckStatus_t Event_Handler(void *Event);
 /* USER CODE BEGIN PFP */
-static void Button_Trigger_Received(void);
+static void P2PC_APP_Send_Command(void);
 static void Update_Service();
-static tBleStatus Write_Char(uint16_t UUID, uint8_t Service_Instance, uint8_t *pPayload);
+static tBleStatus Write_Char(uint16_t UUID, uint8_t Service_Instance, uint8_t *pPayload, uint8_t length);
 void P2PC_APP_Notification_Data_Send(void);
 static void P2PS_Show_Config(void);
 static void P2PC_APP_Call_ATT_MTU_Exchange_Command(void);
@@ -186,7 +182,7 @@ void P2PC_APP_Init(void)
   uint8_t index =0;
 /* USER CODE BEGIN P2PC_APP_Init_1 */
   SCH_RegTask( CFG_TASK_SEARCH_SERVICE_ID, Update_Service );
-  SCH_RegTask( CFG_TASK_SW1_BUTTON_PUSHED_ID, Button_Trigger_Received );
+  SCH_RegTask( CFG_TASK_SEND_COMMAND_ID, P2PC_APP_Send_Command );
   SCH_RegTask( CFG_TASK_VCP_SEND_MEASUREMENT_DATA_ID, P2PC_APP_Notification_Data_Send);
   SCH_RegTask( CFG_TASK_ATT_MTU_EXCHANGE_ID, P2PC_APP_Call_ATT_MTU_Exchange_Command);
   SCH_RegTask( CFG_TASK_SET_PHY_ID, P2PC_APP_Set_PHY);
@@ -201,8 +197,7 @@ void P2PC_APP_Init(void)
 
   P2P_Client_App_Context.LedControl.Device_Led_Selection=0x00;/* device Led */
   P2P_Client_App_Context.LedControl.Led1=0x00; /* led OFF */
-  P2P_Client_App_Context.ButtonStatus.Device_Button_Selection=0x01;/* Device1 */
-  P2P_Client_App_Context.ButtonStatus.Button1=0x00;
+
   P2P_Client_App_Context.Negotiated_ATT_MTU = 0u;
 /* USER CODE END P2PC_APP_Init_1 */
   for(index = 0; index < BLE_CFG_CLT_MAX_NBR_CB; index++)
@@ -257,6 +252,8 @@ void P2PC_APP_Notification(P2PC_APP_ConnHandle_Not_evt_t *pNotification)
       HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
       HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
       HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+
+      P2P_Client_App_Context.Negotiated_ATT_MTU = 0u;
         
 #if OOB_DEMO == 0
       SCH_SetTask(1<<CFG_TASK_CONN_DEV_1_ID, CFG_SCH_PRIO_0);
@@ -278,15 +275,10 @@ void P2PC_APP_Notification(P2PC_APP_ConnHandle_Not_evt_t *pNotification)
 }
 /* USER CODE BEGIN FD */
 
-void P2PC_APP_SW1_Button_Action(void)
-{
-  SCH_SetTask(1<<CFG_TASK_SW1_BUTTON_PUSHED_ID, CFG_SCH_PRIO_0);
-}
-
 void P2PC_APP_Notification_Data_Send(void)
 {
-  P2P_measurementData.data[P2P_measurementData.length] = '\n';
-  P2P_measurementData.data[P2P_measurementData.length + 1] = 0;
+	P2P_measurementData.data[P2P_measurementData.length] = '\n';
+	P2P_measurementData.data[P2P_measurementData.length + 1] = 0;
 	printf((const char * restrict)P2P_measurementData.data);
 }
 
@@ -619,27 +611,6 @@ void Gatt_Notification(P2P_Client_App_Notification_evt_t *pNotification)
     case P2P_NOTIFICATION_INFO_RECEIVED_EVT:
 /* USER CODE BEGIN P2P_NOTIFICATION_INFO_RECEIVED_EVT */
     {
-//    	P2P_Client_App_Context.LedControl.Device_Led_Selection=pNotification->DataTransfered.pPayload[0];
-//		switch(P2P_Client_App_Context.LedControl.Device_Led_Selection) {
-//
-//		case 0x01 : {
-//
-//		  P2P_Client_App_Context.LedControl.Led1=pNotification->DataTransfered.pPayload[1];
-//
-//		  if(P2P_Client_App_Context.LedControl.Led1==0x00){
-//			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
-//			APP_DBG_MSG(" -- P2P APPLICATION CLIENT : NOTIFICATION RECEIVED - LED OFF \n\r");
-//			APP_DBG_MSG(" \n\r");
-//		  } else {
-//			APP_DBG_MSG(" -- P2P APPLICATION CLIENT : NOTIFICATION RECEIVED - LED ON\n\r");
-//			APP_DBG_MSG(" \n\r");
-//			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
-//		  }
-//
-//		  break;
-//		}
-//		default : break;
-//		}
     	memcpy(P2P_measurementData.data, pNotification->DataTransfered.pPayload, pNotification->DataTransfered.Length);
     	P2P_measurementData.length = pNotification->DataTransfered.Length;
     	SCH_SetTask(1<<CFG_TASK_VCP_SEND_MEASUREMENT_DATA_ID, CFG_SCH_PRIO_0);
@@ -670,7 +641,7 @@ uint8_t P2P_Client_APP_Get_State( void ) {
  * @param  pFeatureValue: The address of the new value to be written
  * @retval None
  */
-static tBleStatus Write_Char(uint16_t UUID, uint8_t Service_Instance, uint8_t *pPayload)
+static tBleStatus Write_Char(uint16_t UUID, uint8_t Service_Instance, uint8_t *pPayload, uint8_t length)
 {
 
   tBleStatus ret = BLE_STATUS_INVALID_PARAMS;
@@ -686,8 +657,8 @@ static tBleStatus Write_Char(uint16_t UUID, uint8_t Service_Instance, uint8_t *p
       case P2P_WRITE_CHAR_UUID: /* SERVER RX -- so CLIENT TX */
         ret =aci_gatt_write_without_resp(aP2PClientContext[index].connHandle,
                                          aP2PClientContext[index].P2PWriteToServerCharHdle,
-                                         2, /* charValueLen */
-                                         (uint8_t *)  pPayload);
+										 length, /* charValueLen */
+                                         pPayload);
 
         break;
 
@@ -700,17 +671,11 @@ static tBleStatus Write_Char(uint16_t UUID, uint8_t Service_Instance, uint8_t *p
   return ret;
 }/* end Write_Char() */
 
-static void Button_Trigger_Received(void)
+static void P2PC_APP_Send_Command(void)
 {
-  APP_DBG_MSG("-- P2P APPLICATION CLIENT  : BUTTON PUSHED - WRITE TO SERVER \n ");
-  APP_DBG_MSG(" \n\r");
-  if(P2P_Client_App_Context.ButtonStatus.Button1==0x00){
-    P2P_Client_App_Context.ButtonStatus.Button1=0x01;
-  }else {
-    P2P_Client_App_Context.ButtonStatus.Button1=0x00;
-  }
+  APP_DBG_MSG("-- P2P APPLICATION CLIENT : WRITE TO SERVER \n ");
 
-  Write_Char( P2P_WRITE_CHAR_UUID, 0, (uint8_t *)&P2P_Client_App_Context.ButtonStatus);
+  Write_Char( P2P_WRITE_CHAR_UUID, 0, P2P_Client_App_Context.CommandToSend.Payload, P2P_Client_App_Context.CommandToSend.Length);
 
   return;
 }
@@ -786,9 +751,6 @@ static void Update_Service()
 
 void P2PC_APP_Call_ATT_MTU_Exchange_Command()
 {
-//	SCH_PauseTask(CFG_TASK_ATT_MTU_EXCHANGE_ID);
-//	HAL_Delay(100);
-
 	if(!P2P_Client_App_Context.Negotiated_ATT_MTU)
 	{
 		HAL_Delay(100);
@@ -801,7 +763,6 @@ void P2PC_APP_Call_ATT_MTU_Exchange_Command()
 			APP_DBG_MSG("-- GATT : aci_gatt_exchange_config error %d\n", result);
 		#endif
 	}
-//	SCH_ResumeTask(CFG_TASK_ATT_MTU_EXCHANGE_ID);
 }
 
 static void P2PS_Show_Config(void)
@@ -848,6 +809,46 @@ void P2PC_APP_Set_PHY(void)
 	  if(result)
 		APP_DBG_MSG("-- hci_le_set_phy error\n");
 	#endif
+}
+
+void VCP_DataReceived( uint8_t* Buf , uint32_t *Len )
+{
+	// Check whether command is received
+	if(*Len == 1)
+	{
+		switch(Buf[0])
+		{
+		case 'C': // Connection command
+		case 'c':
+		{
+			if(P2P_Client_APP_Get_State () != APP_BLE_CONNECTED_CLIENT)
+			{
+				SCH_SetTask(1 << CFG_TASK_START_SCAN_ID, CFG_SCH_PRIO_0);
+			}
+			else
+			{
+				// Disconnection routine
+			}
+
+			APP_DBG_MSG("-- Connection command got\n\n");
+		}
+			break;
+
+		case 'S': // Start/Stop measure command
+		case 's':
+		{
+			P2P_Client_App_Context.CommandToSend.Length = 1;
+			P2P_Client_App_Context.CommandToSend.Payload[0] = 'S';
+			P2P_Client_App_Context.CommandToSend.Payload[1] = 0;
+			SCH_SetTask(1<<CFG_TASK_SEND_COMMAND_ID, CFG_SCH_PRIO_0);
+
+			APP_DBG_MSG("-- Start/Stop measure command sent\n\n");
+		}
+			break;
+		}
+	}
+
+	return;
 }
 
 /* USER CODE END LF */

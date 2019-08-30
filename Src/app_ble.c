@@ -244,9 +244,6 @@ static void Ble_Hci_Gap_Gatt_Init(void);
 static const uint8_t* BleGetBdAddress( void );
 static void Scan_Request( void );
 static void Connect_Request( void );
-#if (OOB_DEMO != 0)
-static void Switch_OFF_GPIO( void );
-#endif
  
 /* USER CODE BEGIN PFP */
 
@@ -336,10 +333,6 @@ void APP_BLE_Init( void )
    * Initialize P2P Client Application
    */
   P2PC_APP_Init();
-
-#if (OOB_DEMO != 0)
-  HW_TS_Create(CFG_TIM_PROC_ID_ISR, &(BleApplicationContext.SwitchOffGPIO_timer_Id), hw_ts_SingleShot, Switch_OFF_GPIO);
-#endif
 
 #if (OOB_DEMO == 0)
   /**
@@ -432,6 +425,14 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
                                                            CONN_L2,
                                                            APP_BLE_p2p_Conn_Update_req.Identifier,
                                                            0x01);
+
+          APP_DBG_MSG("-- GAP EVT_BLUE_L2CAP_CONNECTION_UPDATE_REQ:\n");
+          APP_DBG_MSG("- L2CAP_Length: %d\n", pr->L2CAP_Length);
+          APP_DBG_MSG("- Interval_Min: %d\n", (int)(pr->Interval_Min*1.25f));
+          APP_DBG_MSG("- Interval_Max: %d\n", (int)(pr->Interval_Max*1.25f));
+          APP_DBG_MSG("- Minimum_CE_Length: %d\n", (int)(CONN_L1*0.625f));
+          APP_DBG_MSG("- Maximum_CE_Length: %d\n", (int)(CONN_L2*0.625f));
+
           if(result != BLE_STATUS_SUCCESS) {
               /* USER CODE BEGIN BLE_STATUS_SUCCESS */
 
@@ -667,18 +668,6 @@ APP_BLE_ConnStatus_t APP_BLE_Get_Client_Connection_Status( uint16_t Connection_H
 
 void APP_BLE_Key_Button1_Action(void)
 {
-#if OOB_DEMO == 0
-      P2PC_APP_SW1_Button_Action();
-#else
-      if(P2P_Client_APP_Get_State () != APP_BLE_CONNECTED_CLIENT)
-      {
-        SCH_SetTask(1 << CFG_TASK_START_SCAN_ID, CFG_SCH_PRIO_0);
-      }
-      else
-      {
-        P2PC_APP_SW1_Button_Action();
-      }
-#endif
 }
 
 void APP_BLE_Key_Button2_Action(void)
@@ -892,7 +881,7 @@ static void Connect_Request( void )
   if (BleApplicationContext.Device_Connection_Status != APP_BLE_CONNECTED_CLIENT)
   {
     result = aci_gap_create_connection(SCAN_P,
-    SCAN_L,
+    								   SCAN_L,
                                        PUBLIC_ADDR, SERVER_REMOTE_BDADDR,
                                        PUBLIC_ADDR,
                                        CONN_P1,
@@ -924,14 +913,6 @@ static void Connect_Request( void )
   /* USER CODE END Connect_Request_2 */
   return;
 }
-
-#if (OOB_DEMO != 0)
-static void Switch_OFF_GPIO(){
-/* USER CODE BEGIN Switch_OFF_GPIO */
-//	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-/* USER CODE END Switch_OFF_GPIO */
-}
-#endif
 
 const uint8_t* BleGetBdAddress( void )
 {
