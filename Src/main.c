@@ -112,17 +112,10 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  uint32_t config_read_iter = 0;
-
 
   while (1)
   {
-	if((++config_read_iter % 1000000u) == 0) {
-		SCH_SetTask(1<<CFG_TASK_READ_CFG_ID, CFG_SCH_PRIO_1);
-		config_read_iter = 0u;
-	}
-//	  if(test_mut)
-//		  VCP_SendData(test_text, sizeof(test_text)/sizeof(uint8_t), &dummy_callback);
+
 	  SCH_Run(~0);
     /* USER CODE END WHILE */
 

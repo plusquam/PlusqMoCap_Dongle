@@ -277,9 +277,10 @@ void P2PC_APP_Notification(P2PC_APP_ConnHandle_Not_evt_t *pNotification)
 
 void P2PC_APP_Notification_Data_Send(void)
 {
-	P2P_measurementData.data[P2P_measurementData.length] = '\n';
-	P2P_measurementData.data[P2P_measurementData.length + 1] = 0;
-	printf((const char * restrict)P2P_measurementData.data);
+	P2P_measurementData.data[P2P_measurementData.length] = '\r';
+	P2P_measurementData.data[P2P_measurementData.length + 1] = '\n';
+	DbgTraceWrite(1, P2P_measurementData.data, P2P_measurementData.length + 2);
+//	printf((const char * restrict)P2P_measurementData.data);
 }
 
 /* USER CODE END FD */
@@ -575,11 +576,15 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
 			APP_DBG_MSG("-- GATT : EVT_BLUE_ATT_EXCHANGE_MTU_RESP, ATT_MTU: %d\n", P2P_Client_App_Context.Negotiated_ATT_MTU);
 			APP_DBG_MSG("\n");
 #endif
+
+#if(CFG_DEBUG_APP_TRACE != 0)
 			tBleStatus result = hci_le_set_data_length(P2P_Client_App_Context.ConnectionHandle, P2P_Client_App_Context.Negotiated_ATT_MTU, 2120);
-			#if(CFG_DEBUG_APP_TRACE != 0)
-			  if(result)
+
+			if(result)
 				APP_DBG_MSG("-- hci_le_set_data_length error\n");
-			#endif
+#else
+			(void)hci_le_set_data_length(P2P_Client_App_Context.ConnectionHandle, P2P_Client_App_Context.Negotiated_ATT_MTU, 2120);
+#endif
         }
         break; /*end EVT_BLUE_ATT_EXCHANGE_MTU_RESP*/
 
@@ -755,13 +760,15 @@ void P2PC_APP_Call_ATT_MTU_Exchange_Command()
 	{
 		HAL_Delay(100);
 
+#if(CFG_DEBUG_APP_TRACE != 0)
 		tBleStatus result = aci_gatt_exchange_config(P2P_Client_App_Context.ConnectionHandle);
-		#if(CFG_DEBUG_APP_TRACE != 0)
 		if(!result)
 			APP_DBG_MSG("-- GATT : aci_gatt_exchange_config sent\n");
 		else
 			APP_DBG_MSG("-- GATT : aci_gatt_exchange_config error %d\n", result);
-		#endif
+#else
+		(void)aci_gatt_exchange_config(P2P_Client_App_Context.ConnectionHandle);
+#endif
 	}
 }
 
@@ -804,11 +811,14 @@ void P2PC_APP_Set_PHY(void)
 {
 	HAL_Delay(100);
 
+#if(CFG_DEBUG_APP_TRACE != 0)
 	tBleStatus result = hci_le_set_phy(P2P_Client_App_Context.ConnectionHandle, ALL_PHYS_PREFERENCE, TX_2M_PREFERRED, RX_2M_PREFERRED, 0);
-	#if(CFG_DEBUG_APP_TRACE != 0)
-	  if(result)
+
+	if(result)
 		APP_DBG_MSG("-- hci_le_set_phy error\n");
-	#endif
+#else
+	(void)hci_le_set_phy(P2P_Client_App_Context.ConnectionHandle, ALL_PHYS_PREFERENCE, TX_2M_PREFERRED, RX_2M_PREFERRED, 0);
+#endif
 }
 
 void VCP_DataReceived( uint8_t* Buf , uint32_t *Len )
