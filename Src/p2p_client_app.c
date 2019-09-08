@@ -280,7 +280,6 @@ void P2PC_APP_Notification_Data_Send(void)
 	P2P_measurementData.data[P2P_measurementData.length] = '\r';
 	P2P_measurementData.data[P2P_measurementData.length + 1] = '\n';
 	DbgTraceWrite(1, P2P_measurementData.data, P2P_measurementData.length + 2);
-//	printf((const char * restrict)P2P_measurementData.data);
 }
 
 /* USER CODE END FD */
@@ -844,17 +843,14 @@ void VCP_DataReceived( uint8_t* Buf , uint32_t *Len )
 		}
 			break;
 
-		case 'S': // Start/Stop measure command
-		case 's':
+		default: // Generic one char command
 		{
 			P2P_Client_App_Context.CommandToSend.Length = 1;
-			P2P_Client_App_Context.CommandToSend.Payload[0] = 'S';
-			P2P_Client_App_Context.CommandToSend.Payload[1] = 0;
+			P2P_Client_App_Context.CommandToSend.Payload[0] = Buf[0];
 			SCH_SetTask(1<<CFG_TASK_SEND_COMMAND_ID, CFG_SCH_PRIO_0);
 
-			APP_DBG_MSG("-- Start/Stop measure command sent\n\n");
+			APP_DBG_MSG("-- Generic one char command sent\n\n");
 		}
-			break;
 		}
 	}
 
